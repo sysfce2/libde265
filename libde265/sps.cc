@@ -228,31 +228,41 @@ de265_error seq_parameter_set::read(error_queue* errqueue, bitreader* br)
   conformance_window_flag = br->get_bits(1);
 
   if (conformance_window_flag) {
-    if ((vlc = br->get_uvlc()) == UVLC_ERROR || vlc >= static_cast<uint32_t>(pic_width_in_luma_samples)) {
-      errqueue->add_warning(DE265_ERROR_CODED_PARAMETER_OUT_OF_RANGE, false);
-      return DE265_ERROR_CODED_PARAMETER_OUT_OF_RANGE;
-    }
-    conf_win_left_offset = vlc;
+    // SubWidthC * (left + right) has to be smaller than the picture width and
+    // SubHeightC * (top + bottom) smaller than the picture height (7.4.3.2.1).
+    // Compare against the remaining range instead of adding the offsets: a sum
+    // of two coded values can wrap.
 
-    if ((vlc = br->get_uvlc()) == UVLC_ERROR ||
-        vlc + conf_win_left_offset >= static_cast<uint32_t>(pic_width_in_luma_samples)) {
-      errqueue->add_warning(DE265_ERROR_CODED_PARAMETER_OUT_OF_RANGE, false);
-      return DE265_ERROR_CODED_PARAMETER_OUT_OF_RANGE;
-    }
-    conf_win_right_offset = vlc;
+    const bool monochrome_planes = (separate_colour_plane_flag || chroma_format_idc == 0);
+    const uint32_t unitX = monochrome_planes ? 1 : SubWidthC_tab [chroma_format_idc];
+    const uint32_t unitY = monochrome_planes ? 1 : SubHeightC_tab[chroma_format_idc];
 
-    if ((vlc = br->get_uvlc()) == UVLC_ERROR || vlc >= static_cast<uint32_t>(pic_height_in_luma_samples)) {
-      errqueue->add_warning(DE265_ERROR_CODED_PARAMETER_OUT_OF_RANGE, false);
-      return DE265_ERROR_CODED_PARAMETER_OUT_OF_RANGE;
-    }
-    conf_win_top_offset = vlc;
+    const uint32_t max_sum_x = (pic_width_in_luma_samples  - 1) / unitX;
+    const uint32_t max_sum_y = (pic_height_in_luma_samples - 1) / unitY;
 
-    if ((vlc = br->get_uvlc()) == UVLC_ERROR ||
-        vlc + conf_win_top_offset >= static_cast<uint32_t>(pic_height_in_luma_samples)) {
+    if ((vlc = br->get_uvlc()) == UVLC_ERROR || vlc > max_sum_x) {
       errqueue->add_warning(DE265_ERROR_CODED_PARAMETER_OUT_OF_RANGE, false);
       return DE265_ERROR_CODED_PARAMETER_OUT_OF_RANGE;
     }
-    conf_win_bottom_offset = vlc;
+    conf_win_left_offset = static_cast<uint16_t>(vlc);
+
+    if ((vlc = br->get_uvlc()) == UVLC_ERROR || vlc > max_sum_x - conf_win_left_offset) {
+      errqueue->add_warning(DE265_ERROR_CODED_PARAMETER_OUT_OF_RANGE, false);
+      return DE265_ERROR_CODED_PARAMETER_OUT_OF_RANGE;
+    }
+    conf_win_right_offset = static_cast<uint16_t>(vlc);
+
+    if ((vlc = br->get_uvlc()) == UVLC_ERROR || vlc > max_sum_y) {
+      errqueue->add_warning(DE265_ERROR_CODED_PARAMETER_OUT_OF_RANGE, false);
+      return DE265_ERROR_CODED_PARAMETER_OUT_OF_RANGE;
+    }
+    conf_win_top_offset = static_cast<uint16_t>(vlc);
+
+    if ((vlc = br->get_uvlc()) == UVLC_ERROR || vlc > max_sum_y - conf_win_top_offset) {
+      errqueue->add_warning(DE265_ERROR_CODED_PARAMETER_OUT_OF_RANGE, false);
+      return DE265_ERROR_CODED_PARAMETER_OUT_OF_RANGE;
+    }
+    conf_win_bottom_offset = static_cast<uint16_t>(vlc);
   }
   else {
     conf_win_left_offset  = 0;

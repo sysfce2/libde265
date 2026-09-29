@@ -135,10 +135,12 @@ public:
   uint16_t pic_height_in_luma_samples;  // <= MAX_PICTURE_HEIGHT (validated on parse)
   bool conformance_window_flag;
 
-  int conf_win_left_offset;
-  int conf_win_right_offset;
-  int conf_win_top_offset;
-  int conf_win_bottom_offset;
+  // In units of WinUnitX and WinUnitY. Validated on parse:
+  // WinUnitX * (left + right) < pic_width_in_luma_samples, and the same vertically.
+  uint16_t conf_win_left_offset;
+  uint16_t conf_win_right_offset;
+  uint16_t conf_win_top_offset;
+  uint16_t conf_win_bottom_offset;
 
   uint8_t bit_depth_luma;              // [8;16]
   uint8_t bit_depth_chroma;            // [8;16]
