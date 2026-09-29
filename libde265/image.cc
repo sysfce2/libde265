@@ -363,23 +363,26 @@ de265_error de265_image::alloc_image(int w,int h, enum de265_chroma c,
     mem_alloc_success = image_allocation_functions.get_buffer(decctx, &spec, this,
                                                               alloc_userdata);
 
-    pixels_confwin[0] = pixels[0] + left*WinUnitX + top*WinUnitY*stride;
-
-    if (chroma_format != de265_chroma_mono) {
-      pixels_confwin[1] = pixels[1] + left + top*chroma_stride;
-      pixels_confwin[2] = pixels[2] + left + top*chroma_stride;
-    }
-    else {
-      pixels_confwin[1] = nullptr;
-      pixels_confwin[2] = nullptr;
-    }
-
     // check for memory shortage
 
     if (!mem_alloc_success)
       {
         return DE265_ERROR_OUT_OF_MEMORY;
       }
+
+    // The strides count samples, not bytes. The accessor scales the whole offset
+    // to bytes for images with more than 8 bits.
+
+    pixels_confwin[0] = static_cast<uint8_t*>(get_image_plane_at_pos_any_depth(0, left*WinUnitX, top*WinUnitY));
+
+    if (chroma_format != de265_chroma_mono) {
+      pixels_confwin[1] = static_cast<uint8_t*>(get_image_plane_at_pos_any_depth(1, left, top));
+      pixels_confwin[2] = static_cast<uint8_t*>(get_image_plane_at_pos_any_depth(2, left, top));
+    }
+    else {
+      pixels_confwin[1] = nullptr;
+      pixels_confwin[2] = nullptr;
+    }
   }
 
   //alloc_functions = *allocfunc;
