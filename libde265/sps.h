@@ -79,7 +79,20 @@ class sps_range_extension
   uint8_t transform_skip_context_enabled_flag = 0;
   uint8_t implicit_rdpcm_enabled_flag = 0;
   uint8_t explicit_rdpcm_enabled_flag = 0;
+
+  // TODO: extended_precision_processing_flag is parsed, but the decoding process does not implement it.
+  // A stream that sets the flag is decoded as if it were 0: the entropy decoder loses synchronization
+  // and the pictures are wrong. The flag may be set in the 16 bit profiles only (Monochrome 16,
+  // Main 4:4:4 16 Intra, Main 4:4:4 16 Still Picture, High Throughput 4:4:4 16 Intra). What is missing:
+  // - the limited EGk binarization of coeff_abs_level_remaining (9.3.3.4, 9.3.3.11),
+  // - the coefficient range CoeffMin..CoeffMax of Max(15, BitDepth+6) bits (7-27 to 7-30): coefficients
+  //   are stored as int16_t and clipped to -32768..32767 in slice.cc, transform.cc and fallback-dct.cc,
+  // - log2TransformRange in the scaling process (8-300 to 8-307),
+  // - bdShift of the residual (8-295): transform.cc uses a local constant 0 instead of this flag.
+  // Test streams can be encoded with HM (--ExtendedPrecision=1). FFmpeg does not implement the flag
+  // either, so the HM decoder has to serve as the reference.
   uint8_t extended_precision_processing_flag = 0;
+
   uint8_t intra_smoothing_disabled_flag = 0;
   uint8_t high_precision_offsets_enabled_flag = 0;
   uint8_t persistent_rice_adaptation_enabled_flag = 0;
